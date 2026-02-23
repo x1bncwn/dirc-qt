@@ -462,7 +462,7 @@ private:
                 logToTerminal("Chat message for: " ~ display ~ " from: " ~ data.rawNick, "DEBUG", "main");
                 if (!(display in displayBuffers))
                     displayBuffers[display] = "";
-		    string displayNick = data.prefix ~ data.rawNick;
+		string displayNick = data.prefix ~ data.rawNick;
                 string formatted = formatChatMessage(data.timestamp, data.prefix, displayNick, data.messageType, data.body);
                 chatArea.appendMessage(display, formatted);
                 break;
@@ -703,7 +703,7 @@ private:
             }
 	    else
 	    {
-                appendSystemMessage("Unknown command: " ~ text);
+                chatArea.appendMessage(currentServer, formatted);
 	    }
         }
     }
@@ -869,6 +869,111 @@ private:
     }
 
     string ircToHtml(string input)
+    {
+        import std.string;
+        import std.array;
+
+        string result;
+        bool inColor = false;
+        bool inBold = false;
+        bool inUnderline = false;
+        string currentFg, currentBg;
+
+        for (size_t i = 0; i < input.length; i++)
+        {
+            char c = input[i];
+
+            if (c == 3) // Color code
+            {
+                if (inColor) result ~= "</span>";
+
+                // Parse color numbers
+                string fg, bg;
+
+                // Get foreground color (1-2 digits)
+                if (i + 1 < input.length && input[i+1] >= '0' && input[i+1] <= '9')
+                {
+                    fg ~= input[++i];
+                    if (i + 1 < input.length && input[i+1] >= '0' && input[i+1] <= '9')
+                        fg ~= input[++i];
+                }
+
+                // Check for background color (after comma)
+                if (i + 1 < input.length && input[i+1] == ',')
+                {
+                    i++; // skip comma
+                    if (i + 1 < input.length && input[i+1] >= '0' && input[i+1] <= '9')
+                    {
+                        bg ~= input[++i];
+                        if (i + 1 < input.length && input[i+1] >= '0' && input[i+1] <= '9')
+                            bg ~= input[++i];
+                    }
+                }
+
+                // Build style
+                string style;
+                if (fg.length > 0)
+                {
+                    int fgNum = to!int(fg);
+                    style ~= "color: " ~ ircColorToHex(fgNum) ~ ";";
+                }
+                if (bg.length > 0)
+                {
+                    int bgNum = to!int(bg);
+                    style ~= "background-color: " ~ ircColorToHex(bgNum) ~ ";";
+                }
+
+                if (style.length > 0)
+                {
+                    result ~= "<span style='" ~ style ~ "'>";
+                    inColor = true;
+                }
+            }
+            else if (c == 15) // Reset ALL formatting
+            {
+                if (inColor) result ~= "</span>";
+                if (inBold) result ~= "</b>";
+                if (inUnderline) result ~= "</u>";
+                inColor = false;
+                inBold = false;
+                inUnderline = false;
+                currentFg = currentBg = "";
+            }
+            else if (c == 2) // Bold
+            {
+                if (inBold)
+                    result ~= "</b>";
+                else
+                    result ~= "<b>";
+                inBold = !inBold;
+            }
+            else if (c == 22) // Reverse? handle appropriately
+            {
+                // Skip or handle
+            }
+            else if (c == 31) // Underline
+            {
+                if (inUnderline)
+                    result ~= "</u>";
+                else
+                    result ~= "<u>";
+                inUnderline = !inUnderline;
+            }
+            else
+            {
+                result ~= c;
+            }
+        }
+
+        // Close any remaining tags at end
+        if (inColor) result ~= "</span>";
+        if (inBold) result ~= "</b>";
+        if (inUnderline) result ~= "</u>";
+
+        return result;
+    }
+
+    /*string ircToHtml(string input)
     {                                                                                import std.string;
         import std.array;
                                                                                      string result;
@@ -947,7 +1052,7 @@ private:
 
         if (inColor) result ~= "</span>";
         return result;
-    }
+    }*/
 
     string ircColorToHex(int color)
     {
