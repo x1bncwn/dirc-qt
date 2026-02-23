@@ -1,0 +1,19 @@
+{
+    "name": "dirc-qt",
+    "description": "IRC Client with QT6",
+    "authors": ["x1bncwn"],
+    "license": "MIT",
+    "dependencies": {
+        "dqt": {"path": "../dqt"},
+	"dirk": {"path": "./dirk"}
+    },
+    "configurations": [
+	{
+	    "name": "application",
+	    "targetType": "executable",
+	    "sourcePaths": ["source", "source/ui"],
+	    "importPaths": ["source/ui", "dirk"],
+	    "stringImportPaths": ["source/ui"]
+        }
+    ]
+}

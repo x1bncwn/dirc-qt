@@ -1,0 +1,200 @@
+QMainWindow {
+    background-color: #f0f0f0;
+}
+
+QMenuBar {
+    background-color: #ffffff;
+    color: #000000;
+}
+QMenuBar::item {
+    background-color: #ffffff;
+    color: #000000;
+}
+QMenuBar::item:selected {
+    background-color: #c0c0c0;
+}
+QMenuBar::item:pressed {
+    background-color: #a0a0a0;
+}
+
+QMenu {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #c0c0c0;
+}
+QMenu::item {
+    background-color: transparent;
+    color: #000000;
+    padding: 4px 20px;
+}
+QMenu::item:selected {
+    background-color: #c0c0c0;
+}
+QMenu::separator {
+    height: 1px;
+    background-color: #c0c0c0;
+    margin: 4px 0px;
+}
+
+QStatusBar {
+    background-color: #ffffff;
+    color: #000000;
+}
+QStatusBar QLabel {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+QSplitter::handle {
+    background-color: #c0c0c0;
+}
+QSplitter::handle:hover {
+    background-color: #a0a0a0;
+}
+
+QTreeWidget {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #c0c0c0;
+}
+QTreeWidget::item {
+    background-color: #ffffff;
+    color: #000000;
+    padding: 4px;
+}
+QTreeWidget::item:selected {
+    background-color: #c0c0c0;
+    color: #000000;
+}
+QTreeWidget::item:hover {
+    background-color: #e0e0e0;
+}
+QTreeWidget::branch {
+    background-color: #ffffff;
+}
+QTreeWidget::branch:selected {
+    background-color: #c0c0c0;
+}
+QTreeWidget::branch:hover {
+    background-color: #e0e0e0;
+}
+
+QTextEdit {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #c0c0c0;
+}
+
+/* Scroll bars */
+QScrollBar:vertical {
+    background-color: #f0f0f0;
+    width: 14px;
+    margin: 0px;
+    border: none;
+    border-radius: 0px;
+}
+QScrollBar::handle:vertical {
+    background-color: #c0c0c0;
+    min-height: 30px;
+    border-radius: 7px;
+    margin: 2px;
+}
+QScrollBar::handle:vertical:hover {
+    background-color: #a0a0a0;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+    background: none;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QScrollBar:horizontal {
+    background-color: #f0f0f0;
+    height: 14px;
+    margin: 0px;
+    border: none;
+    border-radius: 0px;
+}
+QScrollBar::handle:horizontal {
+    background-color: #c0c0c0;
+    min-width: 30px;
+    border-radius: 7px;
+    margin: 2px;
+}
+QScrollBar::handle:horizontal:hover {
+    background-color: #a0a0a0;
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+    background: none;
+}
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+    background: none;
+}
+
+QLineEdit {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #c0c0c0;
+    padding: 4px;
+}
+QLineEdit:focus {
+    border: 1px solid #a0a0a0;
+}
+
+QPushButton {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #c0c0c0;
+    padding: 4px 8px;
+}
+QPushButton:hover {
+    background-color: #f0f0f0;
+}
+QPushButton:pressed {
+    background-color: #e0e0e0;
+}
+
+/* Input Dialog (Connect popup) */
+QInputDialog {
+    background-color: #f0f0f0;
+    color: #000000;
+}
+QInputDialog QLabel {
+    color: #000000;
+    background-color: #f0f0f0;
+}
+QInputDialog QLineEdit {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #c0c0c0;
+    padding: 4px;
+}
+QInputDialog QLineEdit:focus {
+    border: 1px solid #a0a0a0;
+}
+QInputDialog QPushButton {
+    background-color: #f0f0f0;
+    color: #000000;
+    border: 1px solid #c0c0c0;
+    padding: 4px 8px;
+    min-width: 80px;
+}
+QInputDialog QPushButton:hover {
+    background-color: #ffffff;
+}
+QInputDialog QPushButton:pressed {
+    background-color: #e0e0e0;
+}
+QInputDialog QPushButton[text="OK"] {
+    background-color: #c0c0c0;
+    border: 1px solid #a0a0a0;
+}
+QInputDialog QPushButton[text="OK"]:hover {
+    background-color: #d0d0d0;
+}
+QInputDialog QPushButton[text="Cancel"] {
+    background-color: #e0e0e0;
+}

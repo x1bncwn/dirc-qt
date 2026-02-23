@@ -1,0 +1,207 @@
+QMainWindow {
+    background-color: #000000;
+}
+
+QMenuBar {
+    background-color: #000000;
+    color: #ffffff;
+}
+QMenuBar::item {
+    background-color: #000000;
+    color: #ffffff;
+}
+QMenuBar::item:selected {
+    background-color: #2a82da;
+}
+QMenuBar::item:pressed {
+    background-color: #1e5a9e;
+}
+
+QMenu {
+    background-color: #000000;
+    color: #ffffff;
+    border: 1px solid #333333;
+}
+QMenu::item {
+    background-color: transparent;
+    color: #ffffff;
+    padding: 4px 20px;
+}
+QMenu::item:selected {
+    background-color: #2a82da;
+}
+QMenu::separator {
+    height: 1px;
+    background-color: #333333;
+    margin: 4px 0px;
+}
+
+QStatusBar {
+    background-color: #000000;
+    color: #ffffff;
+}
+QStatusBar QLabel {
+    background-color: #000000;
+    color: #ffffff;
+}
+
+QSplitter::handle {
+    background-color: #333333;
+}
+QSplitter::handle:hover {
+    background-color: #2a82da;
+}
+
+QTreeWidget {
+    background-color: #000000;
+    color: #ffffff;
+    border: 1px solid #333333;
+}
+QTreeWidget::item {
+    background-color: #000000;
+    color: #ffffff;
+    padding: 4px;
+}
+QTreeWidget::item:selected {
+    background-color: #2a82da;
+    color: #ffffff;
+}
+QTreeWidget::item:hover {
+    background-color: #333333;
+}
+QTreeWidget::branch {
+    background-color: #000000;
+}
+QTreeWidget::branch:selected {
+    background-color: #2a82da;
+}
+QTreeWidget::branch:hover {
+    background-color: #333333;
+}
+
+QTextEdit {
+    background-color: #1a1a1a;
+    color: #ffffff;
+    border: 1px solid #333333;
+}
+
+/* Scroll bars */
+QScrollBar:vertical {
+    background-color: #1a1a1a;
+    width: 14px;
+    margin: 0px;
+    border: none;
+    border-radius: 0px;
+}
+QScrollBar::handle:vertical {
+    background-color: #444444;
+    min-height: 30px;
+    border-radius: 7px;
+    margin: 2px;
+}
+QScrollBar::handle:vertical:hover {
+    background-color: #2a82da;
+}
+QScrollBar::handle:vertical:pressed {
+    background-color: #1e5a9e;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0px;
+    background: none;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QScrollBar:horizontal {
+    background-color: #1a1a1a;
+    height: 14px;
+    margin: 0px;
+    border: none;
+    border-radius: 0px;
+}
+QScrollBar::handle:horizontal {
+    background-color: #444444;
+    min-width: 30px;
+    border-radius: 7px;
+    margin: 2px;
+}
+QScrollBar::handle:horizontal:hover {
+    background-color: #2a82da;
+}
+QScrollBar::handle:horizontal:pressed {
+    background-color: #1e5a9e;
+}
+QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {
+    width: 0px;
+    background: none;
+}
+QScrollBar::add-page:horizontal, QScrollBar::sub-page:horizontal {
+    background: none;
+}
+
+QLineEdit {
+    background-color: #1a1a1a;
+    color: #ffffff;
+    border: 1px solid #333333;
+    padding: 4px;
+}
+QLineEdit:focus {
+    border: 1px solid #2a82da;
+}
+
+QPushButton {
+    background-color: #000000;
+    color: #ffffff;
+    border: 1px solid #333333;
+    padding: 4px 8px;
+}
+QPushButton:hover {
+    background-color: #333333;
+}
+QPushButton:pressed {
+    background-color: #2a82da;
+}
+
+/* Input Dialog (Connect popup) */
+QInputDialog {
+    background-color: #000000;
+    color: #ffffff;
+}
+QInputDialog QLabel {
+    color: #ffffff;
+    background-color: #000000;
+}
+QInputDialog QLineEdit {
+    background-color: #1a1a1a;
+    color: #ffffff;
+    border: 1px solid #333333;
+    padding: 4px;
+}
+QInputDialog QLineEdit:focus {
+    border: 1px solid #2a82da;
+}
+QInputDialog QPushButton {
+    background-color: #000000;
+    color: #ffffff;
+    border: 1px solid #333333;
+    padding: 4px 8px;
+    min-width: 80px;
+}
+QInputDialog QPushButton:hover {
+    background-color: #333333;
+}
+QInputDialog QPushButton:pressed {
+    background-color: #2a82da;
+}
+QInputDialog QPushButton[text="OK"] {
+    background-color: #2a82da;
+    border: 1px solid #1e5a9e;
+}
+QInputDialog QPushButton[text="OK"]:hover {
+    background-color: #3a92ea;
+}
+QInputDialog QPushButton[text="Cancel"] {
+    background-color: #333333;
+}
+
