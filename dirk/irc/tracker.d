@@ -419,6 +419,37 @@ class CustomIrcTracker(Payload = void)
 		foreach(i, param; params) {
 			stringParams[i] = param.idup;
 		}
+
+    		// Update channel modes
+    		if (channel.length > 0 && channel[0] == '#') {
+        	    	if (auto chan = findChannel(channel)) {
+            	    		// Parse mode string to separate adding/removing
+            	    		bool adding = true;
+            	    		string modeChars;
+            	    		foreach (char c; modeStr) {
+                	    		if (c == '+') {
+                    				if (modeChars.length > 0) {
+                        	    			chan.applyModeChange(modeChars, stringParams, adding);
+                        	    			modeChars = "";
+                    				}
+                    				adding = true;
+                	    		}
+                	    		else if (c == '-') {
+                    				if (modeChars.length > 0) {
+                        	    			chan.applyModeChange(modeChars, stringParams, adding);
+                        	    			modeChars = "";
+                    				}
+                    				adding = false;
+                	    		}
+                	    		else {
+                    				modeChars ~= c;
+                	    		}
+            			}
+            			if (modeChars.length > 0) {
+                	    		chan.applyModeChange(modeChars, stringParams, adding);
+            			}
+		    	}
+		}
 		onMode(channel.idup, modeStr.idup, stringParams);
 	}
 
@@ -653,12 +684,14 @@ struct CustomTrackedChannel(Payload = void)
 {
 	private:
 	string _name;
+	bool[char] _modes;
 	CustomTrackedUser!Payload*[string] _users;
 
 	this(string name, CustomTrackedUser!Payload*[string] users = null)
 	{
 		_name = name;
 		_users = users;
+		_modes = null;
 	}
 
 	public:
@@ -677,6 +710,33 @@ struct CustomTrackedChannel(Payload = void)
 		import std.range : takeExactly;
 		return _users.values.takeExactly(_users.length);
 	}
+
+        /// Get channel modes
+        string modes() @property
+	{
+		string result;
+		foreach (mode, present; _modes) {
+                        if (present) result ~= mode;
+                }
+                return result;
+        }
+        
+        /// Check if channel has a specific mode
+        bool hasMode(char mode) const
+        {
+                return mode in _modes ? _modes[mode] : false;
+        }
+        
+        /// Update channel modes from a mode change
+        void applyModeChange(string modeString, string[] params, bool adding)
+        {
+                foreach (char c; modeString) {
+                        if (c == '+' || c == '-') continue;
+                        _modes[c] = adding;
+                }
+
+
+        }
 
 	/**
 	 * Lookup a member of this channel by nick name.

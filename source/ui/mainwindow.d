@@ -463,7 +463,7 @@ private:
                 if (!(display in displayBuffers))
                     displayBuffers[display] = "";
 		string displayNick = data.prefix ~ data.rawNick;
-                string formatted = formatChatMessage(data.timestamp, data.prefix, displayNick, data.messageType, data.body);
+                string formatted = formatChatMessage(data.timestamp, data.prefix, displayNick, data.messageType, data.body, display);
                 chatArea.appendMessage(display, formatted);
                 break;
 
@@ -720,7 +720,7 @@ private:
         chatArea.appendMessage("System", formatted);
     }
 
-    string getNickColor(string nickname)
+    /*string getNickColor(string nickname)
     {
         if (!colorizeNicks)
             return isDarkTheme ? "#CCCCCC" : "#666666";
@@ -762,9 +762,9 @@ private:
 
         nickColorCache[nickname] = color;
         return color;
-    }
+    }*/
 
-    /*string getNickColor(string nickname)
+    string getNickColor(string nickname)
     {
         if (!colorizeNicks)
             return isDarkTheme ? "#CCCCCC" : "#666666";
@@ -796,8 +796,8 @@ private:
         combined ^= combined >> 16;
 
         float hue = cast(float)(combined % 360);
-        //hue = hue * 0.618033988749895f;
-        hue = fmod(hue + 137.0f, 360.0f);
+        hue = hue * 0.618033988749895f;
+        //hue = fmod(hue + 180.0f, 360.0f);
 	hue = fmod(hue, 360.0f);
 
         string color;
@@ -822,7 +822,7 @@ private:
 
         nickColorCache[nickname] = color;
         return color;
-    }*/
+    }
 
     string hslToHex(float h, float s, float l)
     {
@@ -973,87 +973,6 @@ private:
         return result;
     }
 
-    /*string ircToHtml(string input)
-    {                                                                                import std.string;
-        import std.array;
-                                                                                     string result;
-        bool inColor = false;
-        string currentFg, currentBg; 
-        for (size_t i = 0; i < input.length; i++)
-        {                                                                                char c = input[i];
-
-            if (c == 3) // Color code
-	    {
-                if (inColor) result ~= "</span>";
-
-                // Parse color numbers
-                string fg, bg;
-                                                                                             // Get foreground color (1-2 digits)
-                if (i + 1 < input.length && input[i+1] >= '0' && input[i+1] <= '9')                                                                                       {
-                    fg ~= input[++i];
-                    if (i + 1 < input.length && input[i+1] >= '0' && input[i+1] <= '9')
-                        fg ~= input[++i];
-                }
-
-                // Check for background color (after comma)
-                if (i + 1 < input.length && input[i+1] == ',')
-                {
-                    i++; // skip comma
-                    if (i + 1 < input.length && input[i+1] >= '0' && input[i+1] <= '9')
-                    {
-                        bg ~= input[++i];
-                        if (i + 1 < input.length && input[i+1] >= '0' && input[i+1] <= '9')
-                            bg ~= input[++i];
-                    }
-                }
-
-                // Build style
-                string style;
-                if (fg.length > 0)
-                {
-                    int fgNum = to!int(fg);
-                    style ~= "color: " ~ ircColorToHex(fgNum) ~ ";";
-                }
-                if (bg.length > 0)
-                {
-                    int bgNum = to!int(bg);
-                    style ~= "background-color: " ~ ircColorToHex(bgNum) ~ ";";
-                }
-
-                if (style.length > 0)
-                {
-                    result ~= "<span style='" ~ style ~ "'>";
-                    inColor = true;
-                }
-            }
-            else if (c == 15) // Reset
-            {
-                if (inColor) result ~= "</span>";
-                inColor = false;
-                currentFg = currentBg = "";
-            }
-            else if (c == 2) // Bold
-            {
-                result ~= "<b>";
-            }
-            else if (c == 22) // Reverse? handle appropriately
-            {
-                // Skip or handle
-            }
-            else if (c == 31) // Underline
-            {
-                result ~= "<u>";
-            }
-            else
-            {
-                result ~= c;
-            }
-        }
-
-        if (inColor) result ~= "</span>";
-        return result;
-    }*/
-
     string ircColorToHex(int color)
     {
         // Standard IRC colors (0-15)
@@ -1079,9 +998,10 @@ private:
         }
     }
 
-    string formatChatMessage(string timestamp, string prefix, string nick, string type, string message)
+    string formatChatMessage(string timestamp, string prefix, string nick, string type, string message, string display)
     {
         import std.string : replace;
+        import std.ascii : isAlphaNum;
 
         // First escape any HTML in the message
         string escapedMsg = message
@@ -1103,6 +1023,28 @@ private:
         {
             modeSymbol = nick[0];
             baseNick = nick[1 .. $];
+        }
+
+        // Colorize mentioned nicks in channel messages (e.g., "nick: message")
+        if (colorizeNicks && display.startsWith("#")) {
+            foreach (nickname, color; nickColorCache) {
+                // Skip the sender's own nick
+                if (nickname == baseNick) continue;
+
+                // Handle "nick:" format
+                string mention = nickname ~ ":";
+                if (escapedMsg.canFind(mention)) {
+                    string colored = "<span style='color: " ~ color ~ "; font-weight: bold;'>" ~ nickname ~ "</span>:";
+                    escapedMsg = escapedMsg.replace(mention, colored);
+                }
+
+            	// Handle "nick," format
+            	mention = nickname ~ ",";
+                if (escapedMsg.canFind(mention)) {
+                    string colored = "<span style='color: " ~ color ~ "; font-weight: bold;'>" ~ nickname ~ "</span>,";
+                    escapedMsg = escapedMsg.replace(mention, colored);
+                }
+            }
         }
 
         switch (type)

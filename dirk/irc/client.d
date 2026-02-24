@@ -1348,11 +1348,13 @@ class IrcClient
 			case "JOIN":
 				auto user = getUser(line.prefix);
 
-				if(user.nickName == m_nick)
+				if(user.nickName == m_nick) {
 					fireEvent(onSuccessfulJoin, line.arguments[0]);
-				else
+					// request channel modes
+					writef("MODE %s", line.arguments[0]);
+				} else {
 					fireEvent(onJoin, user, line.arguments[0]);
-
+				}
 				break;
 			case "353": // TODO: operator/voice status etc. should be propagated to callbacks
 				// line.arguments[0] == client.nick
@@ -1415,6 +1417,15 @@ class IrcClient
 				auto n = IrcUser.parseUserhostReply(users, line.arguments[1]);
 
 				fireEvent(onUserhostReply, users[0 .. n]);
+				break;
+			case "324": // RPL_CHANNELMODEIS
+				auto channel = line.arguments[1];
+				auto modeString = line.arguments[2];
+				const(char)[][] params;
+				if (line.arguments.length > 3)
+					params = line.arguments[3 .. $];
+
+				fireEvent(onModeChange, channel, modeString, params);
 				break;
 			case "332":
 				fireEvent(onTopic, line.arguments[1], line.arguments[2]);
