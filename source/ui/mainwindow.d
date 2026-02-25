@@ -236,7 +236,7 @@ private /+ slots +/:
     {
         string aboutText = "<h2>D IRC Client</h2>" ~
                           "<p>Version 1.0</p>" ~
-                          "<p>Qt IRC client converted from GTK</p>";
+                          "<p>Qt IRC client</p>";
         QMessageBox.about(this, QString("About D IRC Client"), QString(aboutText));
     }
 
@@ -261,6 +261,7 @@ private /+ slots +/:
             {
                 chatArea.setContent(serverBuffers[display][display]);
             }
+	    statusLabel.setText(QString("Connected to " ~ display));
         }
         else if (itemType == "channel")
         {
@@ -279,6 +280,7 @@ private /+ slots +/:
                 {
                     chatArea.setContent(serverBuffers[currentServer][bufferKey]);
                 }
+		statusLabel.setText(QString("Channel " ~ display ~ " on " ~ currentServer));
             }
         }
     }
@@ -883,7 +885,7 @@ private:
 
         float hue = cast(float)(combined % 360);
         hue = hue * 0.618033988749895f;
-        hue = fmod(hue, 360.0f);
+        hue = fmod(hue + 137.0f, 360.0f);
 
         string color;
         if (isDarkTheme)
@@ -1085,7 +1087,6 @@ private:
     string formatChatMessage(string timestamp, string prefix, string nick, string type, string message, string display)
     {
         import std.string : replace;
-        import std.ascii : isAlphaNum;
 
         // First escape any HTML in the message
         string escapedMsg = message
