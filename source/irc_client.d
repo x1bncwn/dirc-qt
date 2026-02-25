@@ -50,7 +50,7 @@ class MyIRCClient : IrcClient
 
         this.guiTid = guiTid;
         this.serverName = server;
-	this.m_window = window;
+		this.m_window = window;
 
         this.nickName = defaultNick;
         this.userName = defaultNick;
@@ -111,24 +111,21 @@ class MyIRCClient : IrcClient
         onConnect ~= () {
             sendSystemMessage("Connected to " ~ serverName);
 
-	    // Start CAP negotiation after successful registration
-	    this.startCapNegotiation();
+			// Start CAP negotiation after successful registration
+			this.startCapNegotiation();
 
             tracker.start();
         };
 	
-	onCapabilityList ~= (in char[] capabilities) {
-	    logToTerminal("Available capabilities: " ~ capabilities.idup, "INFO", "irc");
+		onCapabilityList ~= (in char[] capabilities) {
+			logToTerminal("Available capabilities: " ~ capabilities.idup, "INFO", "irc");
     
-	    auto available = capabilities.split();
-	    string[] toRequest;
+			auto available = capabilities.split();
+			string[] toRequest;
     
-	    foreach(cap; available) {
-		//string capStr = cap.idup;
-		//if (capStr == "multi-prefix") {
-		    toRequest ~= cap.idup;
-		//}
-	    }
+			foreach(cap; available) {
+				toRequest ~= cap.idup;
+			}
     
             if (toRequest.length > 0) {
                 this.requestCapabilities(toRequest);
@@ -137,15 +134,15 @@ class MyIRCClient : IrcClient
             }
         };
 
-	onCapabilityListEnabled ~= (in char[] capabilities) {
-	    logToTerminal("Currently enabled capabilities: " ~ capabilities.idup, "INFO", "irc");
+		onCapabilityListEnabled ~= (in char[] capabilities) {
+			logToTerminal("Currently enabled capabilities: " ~ capabilities.idup, "INFO", "irc");
 
-	    // Update your enabled caps list
-	    enabledCaps.length = 0;
-	    foreach(cap; capabilities.split()) {
-		enabledCaps ~= cap.idup;
-	    }
-	};
+			// Update your enabled caps list
+			enabledCaps.length = 0;
+			foreach(cap; capabilities.split()) {
+				enabledCaps ~= cap.idup;
+			}
+		};
 
         onCapabilityAck ~= (in char[] capabilities) {
             logToTerminal("Enabled capabilities: " ~ capabilities.idup, "INFO", "irc");
@@ -170,18 +167,18 @@ class MyIRCClient : IrcClient
             string oldNick = user.nickName.idup;
             string msgText = "is now known as " ~ newNick.idup;
 
-	    // Send to all channels where the user was present
-	    if (auto userData = tracker.findUser(oldNick)) {
-		foreach (channel; userData.channels) {
-		    sendChatMessage(channel, oldNick, msgText, false, false, "nick");
-		}
-	    }
-        };
+			// Send to all channels where the user was present
+			if (auto userData = tracker.findUser(oldNick)) {
+				foreach (channel; userData.channels) {
+					sendChatMessage(channel, oldNick, msgText, false, false, "nick");
+				}
+			}
+		};
 
-	onModeChange ~= (in char[] channel, in char[] modeStr, const(char)[][] params) {
-	    logToTerminal("Mode change for " ~ channel.idup ~ ": " ~ modeStr.idup, "WARNING", "irc");
-	    // The tracker already handles this via its own onModeChange
-	};
+		onModeChange ~= (in char[] channel, in char[] modeStr, const(char)[][] params) {
+			logToTerminal("Mode change for " ~ channel.idup ~ ": " ~ modeStr.idup, "WARNING", "irc");
+			// The tracker already handles this via its own onModeChange
+		};
 
         onJoin ~= (IrcUser user, in char[] channel) {
             string nickname = user.nickName.idup;
@@ -219,12 +216,12 @@ class MyIRCClient : IrcClient
                 msgText ~= ": " ~ reason.idup;
             }
 
-	    // Get channels this user was in
-	    if (auto userData = tracker.findUser(nickname)) {
-	    	foreach (channel; userData.channels) {
-		    sendChatMessage(channel, nickname, msgText, false, false, "quit");
-		}
-	    }
+			// Get channels this user was in
+			if (auto userData = tracker.findUser(nickname)) {
+				foreach (channel; userData.channels) {
+					sendChatMessage(channel, nickname, msgText, false, false, "quit");
+				}
+			}
         };
 
         onNotice ~= (IrcUser user, in char[] target, in char[] message) {
@@ -238,13 +235,6 @@ class MyIRCClient : IrcClient
         };
 
         onMessage ~= (IrcUser user, in char[] target, in char[] message) {
-	    import std.format : format;
-	    string hex;
-    	    
-	    foreach (ubyte b; cast(ubyte[])message) {
-		hex ~= format("%02X ", b);
-    	    }
-
             string nickname = user.nickName.idup;
             string channel = target.idup;
             string msgStr = message.idup;

@@ -237,9 +237,7 @@ private /+ slots +/:
         string aboutText = "<h2>D IRC Client</h2>" ~
                           "<p>Version 1.0</p>" ~
                           "<p>Qt IRC client converted from GTK</p>";
-        QMessageBox.about(this,
-            QString("About D IRC Client"),
-            QString(aboutText));
+        QMessageBox.about(this, QString("About D IRC Client"), QString(aboutText));
     }
 
     @QSlot final void onChannelSelected(QTreeWidgetItem item, int column)

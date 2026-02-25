@@ -5,15 +5,15 @@
     "license": "MIT",
     "dependencies": {
         "dqt": {"path": "../dqt"},
-	"dirk": {"path": "./dirk"}
+		"dirk": {"path": "./dirk"}
     },
     "configurations": [
-	{
+	  {
 	    "name": "application",
 	    "targetType": "executable",
 	    "sourcePaths": ["source", "source/ui"],
 	    "importPaths": ["source/ui", "dirk"],
 	    "stringImportPaths": ["source/ui"]
-        }
-    ]
+      }
+	]
 }

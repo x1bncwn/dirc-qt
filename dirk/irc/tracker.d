@@ -711,32 +711,30 @@ struct CustomTrackedChannel(Payload = void)
 		return _users.values.takeExactly(_users.length);
 	}
 
-        /// Get channel modes
-        string modes() @property
+    /// Get channel modes
+    string modes() @property
 	{
 		string result;
 		foreach (mode, present; _modes) {
-                        if (present) result ~= mode;
-                }
-                return result;
+            if (present) result ~= mode;
         }
+        return result;
+    }
         
-        /// Check if channel has a specific mode
-        bool hasMode(char mode) const
-        {
-                return mode in _modes ? _modes[mode] : false;
-        }
+    /// Check if channel has a specific mode
+    bool hasMode(char mode) const
+	{
+		return mode in _modes ? _modes[mode] : false;
+    }
         
-        /// Update channel modes from a mode change
-        void applyModeChange(string modeString, string[] params, bool adding)
-        {
-                foreach (char c; modeString) {
-                        if (c == '+' || c == '-') continue;
-                        _modes[c] = adding;
-                }
-
-
+    /// Update channel modes from a mode change
+    void applyModeChange(string modeString, string[] params, bool adding)
+    {
+		foreach (char c; modeString) {
+			if (c == '+' || c == '-') continue;
+			_modes[c] = adding;
         }
+	}
 
 	/**
 	 * Lookup a member of this channel by nick name.
