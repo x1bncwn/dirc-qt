@@ -111,8 +111,8 @@ class MyIRCClient : IrcClient
         onConnect ~= () {
             sendSystemMessage("Connected to " ~ serverName);
 
-	    // Start CAP negotiation after successful registration
-	    this.startCapNegotiation();
+			// Start CAP negotiation after successful registration
+			this.startCapNegotiation();
 
             tracker.start();
         };
