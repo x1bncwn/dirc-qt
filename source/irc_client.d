@@ -32,6 +32,12 @@ class MyIRCClient : IrcClient
     bool clientRunning = true;
     IrcTracker tracker;
 
+    // CAP
+    string[] requestedCaps;
+    string[] enabledCaps;
+    bool capNegotiationPending = false;
+    bool capabilitiesEnabled = false;
+
     private shared(MainWindow) m_window;
 
     this(string server, Tid guiTid, shared(MainWindow) window, Socket socket = null)
@@ -104,7 +110,56 @@ class MyIRCClient : IrcClient
     {
         onConnect ~= () {
             sendSystemMessage("Connected to " ~ serverName);
+
+	    // Start CAP negotiation after successful registration
+	    this.startCapNegotiation();
+
             tracker.start();
+        };
+	
+	onCapabilityList ~= (in char[] capabilities) {
+	    logToTerminal("Available capabilities: " ~ capabilities.idup, "INFO", "irc");
+    
+	    auto available = capabilities.split();
+	    string[] toRequest;
+    
+	    foreach(cap; available) {
+		//string capStr = cap.idup;
+		//if (capStr == "multi-prefix") {
+		    toRequest ~= cap.idup;
+		//}
+	    }
+    
+            if (toRequest.length > 0) {
+                this.requestCapabilities(toRequest);
+            } else {
+                this.endCapNegotiation();
+            }
+        };
+
+	onCapabilityListEnabled ~= (in char[] capabilities) {
+	    logToTerminal("Currently enabled capabilities: " ~ capabilities.idup, "INFO", "irc");
+
+	    // Update your enabled caps list
+	    enabledCaps.length = 0;
+	    foreach(cap; capabilities.split()) {
+		enabledCaps ~= cap.idup;
+	    }
+	};
+
+        onCapabilityAck ~= (in char[] capabilities) {
+            logToTerminal("Enabled capabilities: " ~ capabilities.idup, "INFO", "irc");
+            this.endCapNegotiation();
+        };
+
+        onCapabilityNak ~= (in char[] capabilities) {
+            logToTerminal("Rejected capabilities: " ~ capabilities.idup, "WARNING", "irc");
+            this.endCapNegotiation();
+        };
+
+        onCapabilityEnd ~= () {
+            logToTerminal("Capability negotiation complete", "INFO", "irc");
+            // Proceed with normal operation
         };
 
         onTopic ~= (in char[] channel, in char[] topic) {
@@ -122,6 +177,11 @@ class MyIRCClient : IrcClient
 		}
 	    }
         };
+
+	onModeChange ~= (in char[] channel, in char[] modeStr, const(char)[][] params) {
+	    logToTerminal("Mode change for " ~ channel.idup ~ ": " ~ modeStr.idup, "WARNING", "irc");
+	    // The tracker already handles this via its own onModeChange
+	};
 
         onJoin ~= (IrcUser user, in char[] channel) {
             string nickname = user.nickName.idup;
@@ -178,6 +238,13 @@ class MyIRCClient : IrcClient
         };
 
         onMessage ~= (IrcUser user, in char[] target, in char[] message) {
+	    import std.format : format;
+	    string hex;
+    	    
+	    foreach (ubyte b; cast(ubyte[])message) {
+		hex ~= format("%02X ", b);
+    	    }
+
             string nickname = user.nickName.idup;
             string channel = target.idup;
             string msgStr = message.idup;
@@ -285,15 +352,6 @@ class MyIRCClient : IrcClient
             return newNick;
         };
     }
-
-    /*private void sendToGui(IrcToGuiMessage msg)
-    {
-        import std.concurrency : send;
-
-        send(guiTid, msg);
-
-	atomicStore(messagePending, true);
-    }*/
 
     private void sendToGui(IrcToGuiMessage msg)
     {
@@ -491,6 +549,21 @@ void runIrcServer(string server, Tid guiTid, shared(MainWindow) window)
                     {
                         if (msg.channel.length > 0)
                         {
+			    logToTerminal("Processing message for " ~ msg.channel, "WARNING", "irc");
+			    // Check if we can speak in this channel
+			    if (msg.channel.startsWith("#")) {
+			        auto channel = client.tracker.findChannel(msg.channel);
+				auto user = client.tracker.findUser(client.nickName);
+                                
+				if (channel && channel.hasMode('m')) {
+				    if (user && !user.hasMode(msg.channel, 'v') && !user.hasMode(msg.channel, 'o')) {
+				        // No voice in moderated channel - don't send, show error
+				        client.sendSystemMessage("Cannot send to channel - you do not have voice");
+                            		return true; // Skip this message
+                        	    }
+				}
+			    }
+
                             // Check for action (CTCP ACTION)
                             bool isAction = false;
                             string displayText = msg.text;

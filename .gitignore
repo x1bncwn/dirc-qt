@@ -21,6 +21,8 @@ docs.json
 __dummy.html
 docs/
 dub.selections.json
+*.bak
+*.sav
 
 # Code coverage
 *.lst

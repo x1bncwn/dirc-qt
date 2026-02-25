@@ -65,7 +65,7 @@ private:
     // State
     string currentDisplay = "System";
     string currentServer;
-    string[string] displayBuffers;
+    string[string][string] serverBuffers;  // [server][key] = buffer content
     string[] displayHistory;
     string[string][string] channelTopics;
 
@@ -94,7 +94,7 @@ public:
         chatArea = cpp_new!ChatArea(this);
         inputArea = cpp_new!InputArea(this);
 
-	statusLabel = cpp_new!QLabel("Disconnected", this); 
+        statusLabel = cpp_new!QLabel("Disconnected", this);
         ui.statusbar.addWidget(statusLabel);
 
         ui.splitter.insertWidget(0, sidebar);
@@ -103,15 +103,12 @@ public:
         ui.verticalLayout.setStretch(0, 1);
         ui.verticalLayout.setStretch(1, 0);
 
-        displayBuffers["System"] = "";
+        // Initialize system buffer
+        serverBuffers["System"] = null;
+        serverBuffers["System"]["System"] = "";
         chatArea.setDisplay("System");
 
         setupSignals();
-
-        /*auto timer = cpp_new!QTimer(this);
-        timer.setInterval(50);
-        QObject.connect(timer.signal!"timeout", this.slot!"onIdleCheck");
-        timer.start();*/
 
         // Set dark theme by default
         setApplicationTheme(true);
@@ -132,32 +129,32 @@ public:
 
     @QSlot final void processPendingMessages()
     {
-	import core.atomic : atomicExchange;
+        import core.atomic : atomicExchange;
 
         if (serverThreads.length == 0)
             return;
-	do
-	{
+        do
+        {
             bool gotMessage = true;
             while (gotMessage)
             {
-            	gotMessage = receiveTimeout(Duration.zero,(IrcToGuiMessage msg) 
-		{
+                gotMessage = receiveTimeout(Duration.zero,(IrcToGuiMessage msg)
+                {
                     logToTerminal("Processing message type: "~ to!string(msg.type), "DEBUG", "main");
                     processIrcMessage(msg);
                     return true;
-            	});
+                });
             }
 
-	} while (atomicExchange(&messagesPending, false));
+        } while (atomicExchange(&messagesPending, false));
     }
 
     void sendToIrcThread(string server, GuiToIrcMessage msg)
     {
         if (server in serverThreads)
         {
-            logToTerminal("Sending to IRC thread: " ~ server ~ " type: " ~ 
-			    to!string(msg.type), "DEBUG", "main");
+            logToTerminal("Sending to IRC thread: " ~ server ~ " type: " ~
+                            to!string(msg.type), "DEBUG", "main");
             send(serverThreads[server], msg);
         }
     }
@@ -255,12 +252,17 @@ private /+ slots +/:
 
         logToTerminal("Channel selected: " ~ display ~ " type: " ~ itemType, "INFO", "main");
 
-        currentDisplay = display;
-        chatArea.setDisplay(display);
-
         if (itemType == "server")
         {
             currentServer = display;
+            currentDisplay = display;
+            chatArea.setDisplay(display);
+
+            // Load server buffer (keyed by server name only)
+            if (display in serverBuffers && display in serverBuffers[display])
+            {
+                chatArea.setContent(serverBuffers[display][display]);
+            }
         }
         else if (itemType == "channel")
         {
@@ -269,6 +271,16 @@ private /+ slots +/:
             {
                 auto parentData = parent.text(0).toUtf8().constData();
                 currentServer = parentData[0 .. parent.text(0).toUtf8().length()].idup;
+                currentDisplay = display;
+
+                chatArea.setDisplay(display);
+
+                // Load channel buffer using qualified key (server:channel)
+                string bufferKey = currentServer ~ ":" ~ display;
+                if (currentServer in serverBuffers && bufferKey in serverBuffers[currentServer])
+                {
+                    chatArea.setContent(serverBuffers[currentServer][bufferKey]);
+                }
             }
         }
     }
@@ -336,7 +348,7 @@ private:
         import std.stdio;
 
         isDarkTheme = darkMode;
-	nickColorCache.clear();
+        nickColorCache.clear();
 
         string themeFile;
         if (darkMode)
@@ -359,13 +371,23 @@ private:
             }
         }
 
-	string currentBuffer = displayBuffers.get(currentDisplay, "");
-	if (currentBuffer.length > 0)
-	{
-	    chatArea.setContent(currentBuffer);
-	}
+        // Reload current buffer with new theme colors
+        if (currentServer in serverBuffers)
+        {
+            if (currentDisplay == currentServer)
+            {
+                if (currentServer in serverBuffers[currentServer])
+                    chatArea.setContent(serverBuffers[currentServer][currentServer]);
+            }
+            else
+            {
+                string bufferKey = currentServer ~ ":" ~ currentDisplay;
+                if (bufferKey in serverBuffers[currentServer])
+                    chatArea.setContent(serverBuffers[currentServer][bufferKey]);
+            }
+        }
 
-	appendSystemMessage("Switched to " ~ (darkMode ? "dark" : "light") ~ " theme");
+        appendSystemMessage("Switched to " ~ (darkMode ? "dark" : "light") ~ " theme");
     }
 
     void startConnection(string server)
@@ -381,14 +403,22 @@ private:
         auto tid = spawn(&runIrcServer, server, thisTid, cast(shared)this);
         serverThreads[server] = tid;
 
-        if (!(server in displayBuffers))
-            displayBuffers[server] = "";
+        // Initialize server buffer (keyed by server name only)
+        if (!(server in serverBuffers))
+            serverBuffers[server] = null;
+        if (!(server in serverBuffers[server]))
+            serverBuffers[server][server] = "";
 
         sidebar.addServer(server);
 
         currentDisplay = server;
         currentServer = server;
-        displayBuffers[server] = "";
+
+        // Load server buffer
+        if (server in serverBuffers && server in serverBuffers[server])
+        {
+            chatArea.setContent(serverBuffers[server][server]);
+        }
 
         chatArea.setDisplay(server);
 
@@ -418,12 +448,18 @@ private:
         serverThreads.remove(currentServer);
 
         appendSystemMessage("Disconnected from " ~ currentServer ~ ".");
-	statusLabel.setText(QString("Disconnected"));
+        statusLabel.setText(QString("Disconnected"));
 
         logToTerminal("Statusbar set to: Disconnected", "DEBUG", "main");
 
         currentServer = "";
         currentDisplay = "System";
+
+        // Load system buffer
+        if ("System" in serverBuffers && "System" in serverBuffers["System"])
+        {
+            chatArea.setContent(serverBuffers["System"]["System"]);
+        }
         chatArea.setDisplay("System");
     }
 
@@ -449,6 +485,12 @@ private:
 
         currentDisplay = "System";
         currentServer = "";
+
+        // Load system buffer
+        if ("System" in serverBuffers && "System" in serverBuffers["System"])
+        {
+            chatArea.setContent(serverBuffers["System"]["System"]);
+        }
         chatArea.setDisplay("System");
     }
 
@@ -458,13 +500,32 @@ private:
         {
             case IrcToGuiType.chatMessage:
                 auto data = msg.chat;
-                string display = data.channel.length > 0 ? data.channel : data.server;
-                logToTerminal("Chat message for: " ~ display ~ " from: " ~ data.rawNick, "DEBUG", "main");
-                if (!(display in displayBuffers))
-                    displayBuffers[display] = "";
-		string displayNick = data.prefix ~ data.rawNick;
+                string server = data.server;
+                string channel = data.channel.length > 0 ? data.channel : data.server;
+                string display = channel;
+
+                logToTerminal("Chat message for: " ~ display ~ " from: " ~ data.rawNick ~ " on server: " ~ server, "DEBUG", "main");
+
+                // Initialize server buffer if needed
+                if (!(server in serverBuffers))
+                    serverBuffers[server] = null;
+
+                // Use qualified key for channel messages
+                string bufferKey = server ~ ":" ~ channel;
+                if (!(bufferKey in serverBuffers[server]))
+                    serverBuffers[server][bufferKey] = "";
+
+                string displayNick = data.prefix ~ data.rawNick;
                 string formatted = formatChatMessage(data.timestamp, data.prefix, displayNick, data.messageType, data.body, display);
-                chatArea.appendMessage(display, formatted);
+
+                // Append to the correct server+channel buffer
+                serverBuffers[server][bufferKey] ~= formatted;
+
+                // Show in UI if this is the current server and display
+                if (server == currentServer && display == currentDisplay)
+                {
+                    chatArea.appendMessage(display, formatted);
+                }
                 break;
 
             case IrcToGuiType.channelUpdate:
@@ -476,20 +537,35 @@ private:
             case IrcToGuiType.systemMessage:
                 auto sysMsg = msg.systemMsg;
                 logToTerminal("System message: " ~ sysMsg.text, "DEBUG", "main");
+
+                string server = currentServer.length > 0 ? currentServer : "System";
+                // Server messages use server name as key (not qualified)
+                string bufferKey = server;
+
+                if (!(server in serverBuffers))
+                    serverBuffers[server] = null;
+                if (!(bufferKey in serverBuffers[server]))
+                    serverBuffers[server][bufferKey] = "";
+
+                string formatted = formatSystemMessage(sysMsg.text);
+                serverBuffers[server][bufferKey] ~= formatted;
+
+                // Show in UI based on current context
                 if (currentServer.length > 0)
                 {
-                    string formatted = formatSystemMessage(sysMsg.text);
-                    chatArea.appendMessage(currentDisplay, formatted);
-
-                    if (sysMsg.text == "Connected to " ~ currentServer)
+                    // If this message is for the current server, show it
+                    if (server == currentServer)
                     {
-                        statusLabel.setText(QString("Connected to " ~ currentServer));
-                        logToTerminal("Statusbar updated to: Connected to " ~ currentServer, "INFO", "main");
+                        chatArea.appendMessage(currentDisplay, formatted);
+                        if (sysMsg.text == "Connected to " ~ currentServer)
+                        {
+                            statusLabel.setText(QString("Connected to " ~ currentServer));
+                            logToTerminal("Statusbar updated to: Connected to " ~ currentServer, "INFO", "main");
+                        }
                     }
                 }
                 else
                 {
-                    string formatted = formatSystemMessage(sysMsg.text);
                     chatArea.appendMessage("System", formatted);
                 }
                 break;
@@ -504,23 +580,31 @@ private:
 
     void updateChannelList(string server, string channel, string action)
     {
+        string bufferKey = server ~ ":" ~ channel;
+
         if (action == "join")
         {
             logToTerminal("Adding channel: " ~ channel ~ " to server: " ~ server, "INFO", "main");
             sidebar.addChannel(server, channel);
 
-            if (!(channel in displayBuffers))
-                displayBuffers[channel] = "";
+            // Initialize buffer for this channel using qualified key
+            if (!(server in serverBuffers))
+                serverBuffers[server] = null;
+            if (!(bufferKey in serverBuffers[server]))
+                serverBuffers[server][bufferKey] = "";
 
             if (autoSwitchToNewChannels)
             {
                 currentDisplay = channel;
+                currentServer = server;
                 chatArea.setDisplay(channel);
-                if (channel in displayBuffers)
+
+                // Load the correct buffer using qualified key
+                if (bufferKey in serverBuffers[server])
                 {
-                    chatArea.setContent(displayBuffers[channel]);
+                    chatArea.setContent(serverBuffers[server][bufferKey]);
                 }
-                logToTerminal("Auto-switched to channel: " ~ channel, "INFO", "main");
+                logToTerminal("Auto-switched to channel: " ~ channel ~ " on server: " ~ server, "INFO", "main");
             }
 
             if (!displayHistory.canFind(channel))
@@ -530,7 +614,14 @@ private:
             {
                 string topic = channelTopics[server][channel];
                 string formatted = formatSystemMessage("Topic: " ~ topic);
-                chatArea.appendMessage(channel, formatted);
+                if (server == currentServer && channel == currentDisplay)
+                {
+                    chatArea.appendMessage(channel, formatted);
+                }
+                if (bufferKey in serverBuffers[server])
+                {
+                    serverBuffers[server][bufferKey] ~= formatted;
+                }
             }
         }
         else if (action == "part")
@@ -538,6 +629,7 @@ private:
             logToTerminal("Removing channel: " ~ channel ~ " from server: " ~ server, "INFO", "main");
             sidebar.removeChannel(server, channel);
 
+            // Remove from history
             size_t idx = -1;
             for (size_t i = 0; i < displayHistory.length; i++)
             {
@@ -550,7 +642,7 @@ private:
             if (idx != -1)
                 displayHistory = displayHistory[0 .. idx] ~ displayHistory[idx + 1 .. $];
 
-            if (currentDisplay == channel)
+            if (currentDisplay == channel && currentServer == server)
             {
                 if (displayHistory.length > 0)
                     currentDisplay = displayHistory[$ - 1];
@@ -558,7 +650,32 @@ private:
                     currentDisplay = "System";
 
                 chatArea.setDisplay(currentDisplay);
-                logToTerminal("Switched to: " ~ currentDisplay, "INFO", "main");
+
+                // Load the new display's buffer
+                if (currentDisplay == "System")
+                {
+                    if ("System" in serverBuffers && "System" in serverBuffers["System"])
+                    {
+                        chatArea.setContent(serverBuffers["System"]["System"]);
+                    }
+                }
+                else if (currentDisplay == currentServer)
+                {
+                    // Switching to server buffer
+                    if (currentServer in serverBuffers && currentServer in serverBuffers[currentServer])
+                    {
+                        chatArea.setContent(serverBuffers[currentServer][currentServer]);
+                    }
+                }
+                else
+                {
+                    string newKey = currentServer ~ ":" ~ currentDisplay;
+                    if (currentServer in serverBuffers && newKey in serverBuffers[currentServer])
+                    {
+                        chatArea.setContent(serverBuffers[currentServer][newKey]);
+                    }
+                }
+                logToTerminal("Switched to: " ~ currentDisplay ~ " on server: " ~ currentServer, "INFO", "main");
             }
 
             if (server in channelTopics)
@@ -574,10 +691,17 @@ private:
         channelTopics[server][channel] = topic;
 
         string formatted = formatSystemMessage("Topic: " ~ topic);
-        if (channel in displayBuffers)
-            chatArea.appendMessage(channel, formatted);
-        else
-            chatArea.appendMessage(server, formatted);
+        string bufferKey = server ~ ":" ~ channel;
+
+        // Store in buffer
+        if (server in serverBuffers && bufferKey in serverBuffers[server])
+        {
+            serverBuffers[server][bufferKey] ~= formatted;
+            if (currentDisplay == channel && currentServer == server)
+            {
+                chatArea.appendMessage(channel, formatted);
+            }
+        }
     }
 
     void handleCommand(string text)
@@ -698,13 +822,13 @@ private:
 
             string formatted = formatSystemMessage(">>> " ~ rawCommand);
             if (currentDisplay.startsWith("#"))
-	    {
+            {
                 chatArea.appendMessage(currentDisplay, formatted);
             }
-	    else
-	    {
+            else
+            {
                 chatArea.appendMessage(currentServer, formatted);
-	    }
+            }
         }
     }
 
@@ -718,51 +842,15 @@ private:
     {
         string formatted = formatSystemMessage(message);
         chatArea.appendMessage("System", formatted);
+
+        // Also store in system buffer
+        string server = "System";
+        if (!(server in serverBuffers))
+            serverBuffers[server] = null;
+        if (!(server in serverBuffers[server]))
+            serverBuffers[server][server] = "";
+        serverBuffers[server][server] ~= formatted;
     }
-
-    /*string getNickColor(string nickname)
-    {
-        if (!colorizeNicks)
-            return isDarkTheme ? "#CCCCCC" : "#666666";
-
-        if (nickname in nickColorCache)
-            return nickColorCache[nickname];
-
-        string normalized = nickname.strip().toLower();
-        if (normalized.length == 0)
-            normalized = "user";
-
-        // Better hash function
-        uint hash = 0x811c9dc5u;
-        foreach (char c; normalized)
-        {
-            hash ^= c;
-            hash *= 0x01000193u;
-        }
-
-        // Use hash to generate well-distributed hue (0-360)
-        // Multiply by large prime and mod to spread values evenly
-        float hue = cast(float)((hash * 2654435761u) % 360);
-
-        string color;
-        if (isDarkTheme)
-        {
-            // Dark theme: bright, saturated colors
-            float saturation = 0.70f + (cast(float)((hash >> 8) & 0xFF) / 255.0f) * 0.25f;  // 0.70-0.95
-            float lightness = 0.60f + (cast(float)((hash >> 16) & 0xFF) / 255.0f) * 0.20f;  // 0.60-0.80
-            color = hslToHex(hue, saturation, lightness);
-        }
-        else
-        {
-            // Light theme: darker, readable colors
-            float saturation = 0.65f + (cast(float)((hash >> 8) & 0xFF) / 255.0f) * 0.30f;  // 0.65-0.95
-            float lightness = 0.30f + (cast(float)((hash >> 16) & 0xFF) / 255.0f) * 0.25f;  // 0.30-0.55
-            color = hslToHex(hue, saturation, lightness);
-        }
-
-        nickColorCache[nickname] = color;
-        return color;
-    }*/
 
     string getNickColor(string nickname)
     {
@@ -797,8 +885,7 @@ private:
 
         float hue = cast(float)(combined % 360);
         hue = hue * 0.618033988749895f;
-        //hue = fmod(hue + 180.0f, 360.0f);
-	hue = fmod(hue, 360.0f);
+        hue = fmod(hue, 360.0f);
 
         string color;
         if (isDarkTheme)
@@ -872,7 +959,6 @@ private:
     {
         import std.string;
         import std.array;
-
         string result;
         bool inColor = false;
         bool inBold = false;
@@ -1038,8 +1124,8 @@ private:
                     escapedMsg = escapedMsg.replace(mention, colored);
                 }
 
-            	// Handle "nick," format
-            	mention = nickname ~ ",";
+                // Handle "nick," format
+                mention = nickname ~ ",";
                 if (escapedMsg.canFind(mention)) {
                     string colored = "<span style='color: " ~ color ~ "; font-weight: bold;'>" ~ nickname ~ "</span>,";
                     escapedMsg = escapedMsg.replace(mention, colored);
@@ -1171,7 +1257,6 @@ private:
                     {
                         result ~= baseNick;
                     }
-
                     result ~= ": " ~ escapedMsg ~ "<br>";
                 }
                 else
@@ -1183,156 +1268,6 @@ private:
 
         return result;
     }
-
-    /*string formatChatMessage(string timestamp, string prefix, string nick, string type, string message)
-    {
-        string result = timestamp ~ " ";
-
-        char modeSymbol = '\0';
-        string baseNick = nick;
-
-        if (nick.length > 0 && (nick[0] == '@' || nick[0] == '+' || nick[0] == '%' || nick[0] == '&' || nick[0] == '~'))
-        {
-            modeSymbol = nick[0];
-            baseNick = nick[1 .. $];
-        }
-
-        switch (type)
-        {
-            case "message":
-                if (nick.length > 0)
-                {
-                    if (modeSymbol != '\0')
-                    {
-                        string color = getModeSymbolColor(modeSymbol);
-                        result ~= "<span style='color: " ~ color ~ "; font-weight: bold;'>" ~ [modeSymbol].idup ~ "</span>";
-                    }
-
-                    if (colorizeNicks)
-                    {
-                        string color = getNickColor(baseNick);
-                        result ~= "<span style='color: " ~ color ~ "; font-weight: bold;'>" ~ baseNick ~ "</span>";
-                    }
-                    else
-                    {
-                        result ~= baseNick;
-                    }
-
-                    result ~= ": " ~ message ~ "<br>";
-                }
-                else
-                {
-                    result ~= message ~ "<br>";
-                }
-                break;
-
-            case "action":
-                result ~= "* ";
-                if (nick.length > 0)
-                {
-                    if (modeSymbol != '\0')
-                    {
-                        string color = getModeSymbolColor(modeSymbol);
-                        result ~= "<span style='color: " ~ color ~ "; font-weight: bold;'>" ~ [modeSymbol].idup ~ "</span>";
-                    }
-
-                    if (colorizeNicks)
-                    {
-                        string color = getNickColor(baseNick);
-                        result ~= "<span style='color: " ~ color ~ "; font-weight: bold;'>" ~ baseNick ~ "</span>";
-                    }
-                    else
-                    {
-                        result ~= baseNick;
-                    }
-
-                    result ~= " " ~ message ~ "<br>";
-                }
-                else
-                {
-                    result ~= " " ~ message ~ "<br>";
-                }
-                break;
-
-            case "notice":
-                result ~= "-";
-                if (nick.length > 0)
-                {
-                    if (modeSymbol != '\0')
-                    {
-                        string color = getModeSymbolColor(modeSymbol);
-                        result ~= "<span style='color: " ~ color ~ "; font-weight: bold;'>" ~ [modeSymbol].idup ~ "</span>";
-                    }
-
-                    if (colorizeNicks)
-                    {
-                        string color = getNickColor(baseNick);
-                        result ~= "<span style='color: " ~ color ~ "; font-weight: bold;'>" ~ baseNick ~ "</span>";
-                    }
-                    else
-                    {
-                        result ~= baseNick;
-                    }
-
-                    result ~= "- " ~ message ~ "<br>";
-                }
-                else
-                {
-                    result ~= "- " ~ message ~ "<br>";
-                }
-                break;
-
-            case "join": case "part": case "quit": case "kick": case "nick":
-                if (nick.length > 0)
-                {
-                    if (modeSymbol != '\0')
-                    {
-                        string color = getModeSymbolColor(modeSymbol);
-                        result ~= "<span style='color: " ~ color ~ "; font-weight: bold;'>" ~ [modeSymbol].idup ~ "</span>";
-                    }
-
-                    if (colorizeNicks)
-                    {
-                        string color = getNickColor(baseNick);
-                        result ~= "<span style='color: " ~ color ~ "; font-weight: bold;'>" ~ baseNick ~ "</span>";
-                    }
-                    else
-                    {
-                        result ~= baseNick;
-                    }
-
-                    result ~= " " ~ message ~ "<br>";
-                }
-                else
-                {
-                    result ~= message ~ "<br>";
-                }
-                break;
-
-            default:
-                if (nick.length > 0)
-                {
-                    if (colorizeNicks)
-                    {
-                        string color = getNickColor(baseNick);
-                        result ~= "<span style='color: " ~ color ~ "; font-weight: bold;'>" ~ baseNick ~ "</span>";
-                    }
-                    else
-                    {
-                        result ~= baseNick;
-                    }
-
-                    result ~= ": " ~ message ~ "<br>";
-                }
-                else
-                {
-                    result ~= message ~ "<br>";
-                }
-                break;
-        }
-
-        return result;
-    }*/
 
     string formatSystemMessage(string message)
     {

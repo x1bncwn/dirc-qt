@@ -1,5 +1,6 @@
 module irc.protocol;
 
+import irc.tags;
 import irc.exception;
 
 import std.algorithm;
@@ -58,6 +59,8 @@ enum IRC_MAX_COMMAND_PARAMETERS = 15; // RFC2812
  */
 struct IrcLine
 {
+    /// IRCv3 message tags
+    IrcTags tags;
     /// Note: null when the message has no _prefix.
     const(char)[] prefix; // Optional
     ///
@@ -97,11 +100,30 @@ private const(char)[] getToken(ref const(char)[] s) pure @nogc
 
 // [:prefix] <command> <parameters ...> [:long parameter]
 // TODO: do something about the allocation of the argument array
-bool parse(const(char)[] raw, out IrcLine line) pure @nogc
+bool parse(const(char)[] raw, out IrcLine line)
 {
-    debug (Dirk) std.stdio.writeln("parse called with: \"" ~ raw ~ "\"");
+    // Reset line
+    line.tags.tags = null;
+    line.prefix = null;
+    line.command = null;
+    line.numArguments = 0;
 
     auto working = raw;
+
+    // Parse tags if present
+    if (!parseTags(working, line.tags, working))
+    {
+        // No tags, working unchanged
+    }
+
+    debug (Dirk) std.stdio.writeln("parse called with: \"" ~ raw ~ "\"");
+
+    debug (Dirk) {
+        if (line.tags.tags.length > 0)
+        {
+	    std.stdio.writeln("  Tags: ", line.tags.tags);
+        }
+    }
 
     if (working.length > 0 && working[0] == ':')
     {

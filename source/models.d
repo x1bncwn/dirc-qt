@@ -6,9 +6,9 @@ import std.string;
 import std.array;
 import std.algorithm;
 
-immutable string defaultChannel = "#pike-test";
-immutable string defaultServer = "irc.servercentral.net";
-immutable ushort defaultPort = 9999;
+immutable string defaultChannel = "#dirc-test";
+immutable string defaultServer = "irc.libera.chat";
+immutable ushort defaultPort = 6697;
 immutable string defaultNick = "x2bncwn";
 
 /// Types of messages sent from the IRC thread to the GUI thread

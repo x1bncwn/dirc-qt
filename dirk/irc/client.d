@@ -615,6 +615,34 @@ class IrcClient
 	}
 
 	/**
+	  * Start capability negotiation
+	  */
+	void startCapNegotiation()
+	{
+	    enforce(connected, "Must be connected to start CAP negotiation");
+	    writef("CAP LS 302");
+	}
+
+
+	/**
+	 * Request specific IRCv3 capabilities
+	 */
+	void requestCapabilities(string[] caps)
+	{
+	    if (caps.length > 0) {
+	        writef("CAP REQ :%-(%s %)", caps);
+	    }
+	}
+
+	/**
+	 * End capability negotiation manually
+	 */
+	void endCapNegotiation()
+	{
+	    writef("CAP END");
+	}
+
+	/**
 	 * The maximum number of characters (bytes) allowed in this user's nick name.
 	 *
 	 * The limit is network-specific.
@@ -651,8 +679,7 @@ class IrcClient
 	{
 		import std.range : chunks;
 
-		enforce(channelListModes.canFind(list),
-			`specified channel mode "` ~ list ~ `" is not a list mode`);
+		enforce(channelListModes.canFind(list), `specified channel mode "` ~ list ~ `" is not a list mode`);
 
 		foreach(chunk; addresses.chunks(messageModeLimit)) // TODO: split up if too long
 		{
@@ -907,6 +934,13 @@ class IrcClient
 	/// Invoked when this client has successfully connected to a server.
 	void delegate()[] onConnect;
 
+	// CAP
+        void delegate(in char[] capabilities)[] onCapabilityList;
+	void delegate(in char[] capabilities)[] onCapabilityListEnabled;
+        void delegate(in char[] capabilities)[] onCapabilityAck;
+        void delegate(in char[] capabilities)[] onCapabilityNak;
+        void delegate()[] onCapabilityEnd;
+
 	/**
 	 * Invoked when a message is picked up by the user for this client.
 	 * Params:
@@ -1085,7 +1119,7 @@ class IrcClient
 	 *   $(MREF IrcClient.queryUserhost)
 	 */
 	void delegate(in IrcUser[] users)[] onUserhostReply;
-	
+
 	/**
 	 * Invoked when a user invites us to a channel.
 	 * Params:
@@ -1349,11 +1383,12 @@ class IrcClient
 				auto user = getUser(line.prefix);
 
 				if(user.nickName == m_nick) {
-					fireEvent(onSuccessfulJoin, line.arguments[0]);
-					// request channel modes
-					writef("MODE %s", line.arguments[0]);
+				    fireEvent(onSuccessfulJoin, line.arguments[0]);
+
+				    // request channel modes
+				    writef("MODE %s", line.arguments[0]);
 				} else {
-					fireEvent(onJoin, user, line.arguments[0]);
+				    fireEvent(onJoin, user, line.arguments[0]);
 				}
 				break;
 			case "353": // TODO: operator/voice status etc. should be propagated to callbacks
@@ -1410,6 +1445,30 @@ class IrcClient
 						auto user = getUser(prefix);
 						fireEvent(onUserModeChange, user, modeString);
 					}
+				}
+				break;
+                        case "CAP":
+                                auto subCmd = line.arguments[1];
+                                auto caps = line.arguments.length > 2 ? line.arguments[2] : "";
+				if (subCmd == "LS") {
+				    // Server lists available capabilities
+				    fireEvent(onCapabilityList, caps);
+                                }
+				else if (subCmd == "ACK") {
+				    // Server acknowledged our requested capabilities
+                                    fireEvent(onCapabilityAck, caps);
+				}
+				else if (subCmd == "NAK") {
+				    // Server rejected some capabilities
+                                    fireEvent(onCapabilityNak, caps);
+				}
+				else if (subCmd == "END") {
+				    // CAP negotiation ended
+				    fireEvent(onCapabilityEnd);
+				}
+				else if (subCmd == "LIST") {
+				    // Server lists currently enabled capabilities
+				    fireEvent(onCapabilityListEnabled, caps);
 				}
 				break;
 			case "302":
@@ -1471,7 +1530,6 @@ class IrcClient
 			case "330": // Freenode
 				fireEvent(onWhoisAccountReply, line.arguments[1], line.arguments[2]);
 				break;
-			// ADD MISSING WHOIS REPLIES
 			case "301": // RPL_AWAY
 				fireEvent(onWhoisAwayReply, line.arguments[1], line.arguments[2]);
 				break;
@@ -1615,8 +1673,7 @@ class IrcClient
 				fireEvent(onServerInfo, "003", line.arguments[1]);
 				break;
 			case "004": // RPL_MYINFO
-				auto serverInfo = format("Server: %s, Version: %s, User modes: %s, Channel modes: %s, Prefix: %s", 
-					line.arguments[1], line.arguments[2], line.arguments[3], line.arguments[4], line.arguments[5]);
+				auto serverInfo = format("Server: %s, Version: %s, User modes: %s, Channel modes: %s, Prefix: %s", line.arguments[1], line.arguments[2], line.arguments[3], line.arguments[4], line.arguments[5]);
 				fireEvent(onServerInfo, "004", serverInfo);
 				break;
 			// LUSER numeric replies
