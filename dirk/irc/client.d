@@ -1447,20 +1447,21 @@ class IrcClient
 					}
 				}
 				break;
-                        case "CAP":
-                                auto subCmd = line.arguments[1];
-                                auto caps = line.arguments.length > 2 ? line.arguments[2] : "";
+			case "CAP":
+			    auto subCmd = line.arguments[1];
+                auto caps = line.arguments.length > 2 ? line.arguments[2] : "";
+			
 				if (subCmd == "LS") {
 				    // Server lists available capabilities
 				    fireEvent(onCapabilityList, caps);
-                                }
+				}
 				else if (subCmd == "ACK") {
 				    // Server acknowledged our requested capabilities
-                                    fireEvent(onCapabilityAck, caps);
+                    fireEvent(onCapabilityAck, caps);
 				}
 				else if (subCmd == "NAK") {
 				    // Server rejected some capabilities
-                                    fireEvent(onCapabilityNak, caps);
+                    fireEvent(onCapabilityNak, caps);
 				}
 				else if (subCmd == "END") {
 				    // CAP negotiation ended
