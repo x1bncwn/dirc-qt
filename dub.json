@@ -8,12 +8,12 @@
 		"dirk": {"path": "./dirk"}
     },
     "configurations": [
-	{
+	  {
 	    "name": "application",
 	    "targetType": "executable",
 	    "sourcePaths": ["source", "source/ui"],
 	    "importPaths": ["source/ui", "dirk"],
 	    "stringImportPaths": ["source/ui"]
-        }
-    ]
+      }
+	]
 }
